@@ -281,3 +281,110 @@ class TestCreateUser:
         data = response.get_json()
         assert 'error' in data
         assert 'Request Pydantic validation failed' in data['error']
+    
+    def test_create_user_username_empty(self, client):
+        """Test creating a user with empty username."""
+        invalid_data = {
+            'username': '',
+            'email': 'test@example.com',
+            'age': 25,
+            'role': 'admin'
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(invalid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        
+        data = response.get_json()
+        assert 'error' in data
+        assert 'Request Pydantic validation failed' in data['error']
+        assert 'details' in data
+        assert any('at least 3 characters' in str(error) for error in data['details'])
+    
+    def test_create_user_username_too_short(self, client):
+        """Test creating a user with username shorter than 3 characters."""
+        invalid_data = {
+            'username': 'ab',  # 2 characters
+            'email': 'test@example.com',
+            'age': 25,
+            'role': 'admin'
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(invalid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        
+        data = response.get_json()
+        assert 'error' in data
+        assert 'Request Pydantic validation failed' in data['error']
+        assert 'details' in data
+        assert any('at least 3 characters' in str(error) for error in data['details'])
+    
+    def test_create_user_username_minimum_length(self, client):
+        """Test creating a user with username of minimum valid length (3 characters)."""
+        valid_data = {
+            'username': 'abc',  # 3 characters - minimum valid
+            'email': 'test@example.com',
+            'age': 25,
+            'role': 'admin'
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(valid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 201
+        
+        data = response.get_json()
+        assert 'id' in data
+        assert data['username'] == 'abc'
+        assert data['email'] == 'test@example.com'
+        assert data['age'] == 25
+        assert data['role'] == 'admin'
+    
+    def test_create_user_username_maximum_length(self, client):
+        """Test creating a user with username of maximum valid length (50 characters)."""
+        valid_data = {
+            'username': 'a' * 50,  # 50 characters - maximum valid
+            'email': 'test@example.com',
+            'age': 25,
+            'role': 'admin'
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(valid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 201
+        
+        data = response.get_json()
+        assert 'id' in data
+        assert data['username'] == 'a' * 50
+        assert data['email'] == 'test@example.com'
+        assert data['age'] == 25
+        assert data['role'] == 'admin'
+    
+    def test_create_user_username_too_long(self, client):
+        """Test creating a user with username longer than 50 characters."""
+        invalid_data = {
+            'username': 'a' * 51,  # 51 characters - too long
+            'email': 'test@example.com',
+            'age': 25,
+            'role': 'admin'
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(invalid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        
+        data = response.get_json()
+        assert 'error' in data
+        assert 'Request Pydantic validation failed' in data['error']
+        assert 'details' in data
+        assert any('at most 50 characters' in str(error) for error in data['details'])

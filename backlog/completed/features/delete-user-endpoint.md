@@ -17,3 +17,4 @@ As a **user**, I want to be able to delete users from the system, so that unused
 - Implement hard delete (remove from database)
 - Add proper error handling for non-existent users
 - Test deletion and subsequent GET requests
+- Consider soft delete for future requirements 
