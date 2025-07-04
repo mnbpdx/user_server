@@ -51,6 +51,29 @@ def get_user(id):
     userResponse = UserSchema.model_validate(user)
     return jsonify(userResponse.model_dump())
 
+@users_bp.route('/<int:id>', methods=['DELETE'])
+def delete_user(id):
+    """Delete a specific user by ID.
+    
+    Args:
+        id (int): The ID of the user to delete.
+        
+    Returns:
+        Response: Empty response with appropriate status code.
+        
+    Status Codes:
+        204: User deleted successfully.
+        404: User not found.
+    """
+    success, error = UserService.delete_user(id=id)
+    if not success:
+        if error == "User not found":
+            return jsonify({'error': 'User not found'}), 404
+        else:
+            return jsonify({'error': error}), 500
+    
+    return '', 204
+
 @users_bp.route('', methods=['POST'])
 def create_user():
     """Create a new user.
