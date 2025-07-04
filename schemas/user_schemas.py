@@ -30,13 +30,13 @@ class UserSchema(BaseModel):
         age (int): The age of the user.
         role (str): The role of the user in the system.
     """
-    model_config = ConfigDict(from_attributes=True)
-    
     id: int
     username: str
     email: str
     age: int
     role: str
+    
+    model_config = ConfigDict(from_attributes=True)  # Allows conversion from SQLAlchemy models
 
 class UserResponseSchema(BaseModel):
     """Schema for API responses containing multiple users.
