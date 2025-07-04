@@ -72,3 +72,26 @@ class UserService:
             list[User]: A list of User objects with the specified role.
         """
         return db.session.query(User).filter(User.role == role).all()
+
+    @staticmethod
+    def delete_user(id):
+        """Delete a user by their ID.
+        
+        Args:
+            id (int): The ID of the user to delete.
+            
+        Returns:
+            tuple: A tuple containing (True, None) on success or (False, error_message) on failure.
+                   Returns (False, "User not found") if the user doesn't exist.
+        """
+        try:
+            user = db.session.get(User, id)
+            if not user:
+                return False, "User not found"
+            
+            db.session.delete(user)
+            db.session.commit()
+            return True, None
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)

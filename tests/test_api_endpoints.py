@@ -109,6 +109,102 @@ class TestGetUserById:
         assert data['error'] == 'User not found'
 
 
+class TestDeleteUser:
+    """Test the DELETE /api/users/{id} endpoint."""
+    
+    def test_delete_user_success(self, client, create_user):
+        """Test deleting a user that exists returns 204 No Content."""
+        user = create_user(username='testuser', email='test@example.com', age=30, role='admin')
+        
+        response = client.delete(f'/api/users/{user["id"]}')
+        assert response.status_code == 204
+        assert response.get_data() == b''
+    
+    def test_delete_user_not_found(self, client):
+        """Test deleting a user that doesn't exist returns 404 Not Found."""
+        response = client.delete('/api/users/999')
+        assert response.status_code == 404
+        
+        data = response.get_json()
+        assert 'error' in data
+        assert data['error'] == 'User not found'
+    
+    def test_delete_user_removes_from_database(self, client, create_user):
+        """Test that deleted user is completely removed from database."""
+        user = create_user(username='testuser', email='test@example.com', age=30, role='admin')
+        user_id = user['id']
+        
+        # Verify user exists before deletion
+        response = client.get(f'/api/users/{user_id}')
+        assert response.status_code == 200
+        
+        # Delete the user
+        response = client.delete(f'/api/users/{user_id}')
+        assert response.status_code == 204
+        
+        # Verify user no longer exists
+        response = client.get(f'/api/users/{user_id}')
+        assert response.status_code == 404
+        
+        data = response.get_json()
+        assert 'error' in data
+        assert data['error'] == 'User not found'
+    
+    def test_delete_user_not_in_all_users_list(self, client, create_user):
+        """Test that deleted user is not included in get all users response."""
+        user = create_user(username='testuser', email='test@example.com', age=30, role='admin')
+        user_id = user['id']
+        
+        # Verify user is in all users list before deletion
+        response = client.get('/api/users')
+        assert response.status_code == 200
+        data = response.get_json()
+        user_ids = [u['id'] for u in data['users']]
+        assert user_id in user_ids
+        assert len(data['users']) == 1
+        
+        # Delete the user
+        response = client.delete(f'/api/users/{user_id}')
+        assert response.status_code == 204
+        
+        # Verify user is not in all users list after deletion
+        response = client.get('/api/users')
+        assert response.status_code == 200
+        data = response.get_json()
+        user_ids = [u['id'] for u in data['users']]
+        assert user_id not in user_ids
+        assert len(data['users']) == 0
+    
+    def test_delete_user_multiple_users(self, client, create_users, sample_users_data):
+        """Test deleting one user doesn't affect other users."""
+        create_users(sample_users_data)
+        
+        # Get all users before deletion
+        response = client.get('/api/users')
+        assert response.status_code == 200
+        data = response.get_json()
+        initial_count = len(data['users'])
+        assert initial_count == 3
+        
+        # Get the first user ID
+        user_id_to_delete = data['users'][0]['id']
+        
+        # Delete one user
+        response = client.delete(f'/api/users/{user_id_to_delete}')
+        assert response.status_code == 204
+        
+        # Verify other users still exist
+        response = client.get('/api/users')
+        assert response.status_code == 200
+        data = response.get_json()
+        remaining_count = len(data['users'])
+        assert remaining_count == initial_count - 1
+        
+        # Verify the deleted user is not in the list
+        remaining_user_ids = [u['id'] for u in data['users']]
+        assert user_id_to_delete not in remaining_user_ids
+
+
 class TestCreateUser:
     """Test the POST /api/users endpoint."""
     
