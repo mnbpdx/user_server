@@ -8,18 +8,18 @@ class User(db.Model):
     
     Attributes:
         id: Primary key, auto-incremented integer.
-        username: User's username, up to 100 characters.
+        username: User's username, up to 50 characters.
         email: User's email address, up to 100 characters.
         age: User's age as an integer.
-        role: User's role in the system, up to 50 characters.
+        role: User's role in the system, up to 20 characters.
     """
     __tablename__ = 'users'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False)
+    email: Mapped[str] = mapped_column(String(100), nullable=False)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
-    role: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
     
     def to_dict(self):
         """Convert the User instance to a dictionary.

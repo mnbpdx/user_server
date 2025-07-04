@@ -388,3 +388,89 @@ class TestCreateUser:
         assert 'Request Pydantic validation failed' in data['error']
         assert 'details' in data
         assert any('at most 50 characters' in str(error) for error in data['details'])
+    
+    def test_create_user_email_maximum_length(self, client):
+        """Test creating a user with email of maximum valid length (100 characters)."""
+        valid_data = {
+            'username': 'testuser',
+            'email': 'a' * 88 + '@example.com',  # 100 characters total
+            'age': 25,
+            'role': 'admin'
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(valid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 201
+        
+        data = response.get_json()
+        assert 'id' in data
+        assert data['username'] == 'testuser'
+        assert data['email'] == 'a' * 88 + '@example.com'
+        assert data['age'] == 25
+        assert data['role'] == 'admin'
+    
+    def test_create_user_email_too_long(self, client):
+        """Test creating a user with email longer than 100 characters."""
+        invalid_data = {
+            'username': 'testuser',
+            'email': 'a' * 89 + '@example.com',  # 101 characters total
+            'age': 25,
+            'role': 'admin'
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(invalid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        
+        data = response.get_json()
+        assert 'error' in data
+        assert 'Request Pydantic validation failed' in data['error']
+        assert 'details' in data
+        assert any('at most 100 characters' in str(error) for error in data['details'])
+    
+    def test_create_user_role_maximum_length(self, client):
+        """Test creating a user with role of maximum valid length (20 characters)."""
+        valid_data = {
+            'username': 'testuser',
+            'email': 'test@example.com',
+            'age': 25,
+            'role': 'a' * 20  # 20 characters - maximum valid
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(valid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 201
+        
+        data = response.get_json()
+        assert 'id' in data
+        assert data['username'] == 'testuser'
+        assert data['email'] == 'test@example.com'
+        assert data['age'] == 25
+        assert data['role'] == 'a' * 20
+    
+    def test_create_user_role_too_long(self, client):
+        """Test creating a user with role longer than 20 characters."""
+        invalid_data = {
+            'username': 'testuser',
+            'email': 'test@example.com',
+            'age': 25,
+            'role': 'a' * 21  # 21 characters - too long
+        }
+        
+        response = client.post('/api/users', 
+                             data=json.dumps(invalid_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        
+        data = response.get_json()
+        assert 'error' in data
+        assert 'Request Pydantic validation failed' in data['error']
+        assert 'details' in data
+        assert any('at most 20 characters' in str(error) for error in data['details'])
