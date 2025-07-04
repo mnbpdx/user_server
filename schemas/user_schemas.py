@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 class UserCreateSchema(BaseModel):
     """Schema for creating a new user.
@@ -7,15 +7,15 @@ class UserCreateSchema(BaseModel):
     The ID is auto-generated and not included in this schema.
     
     Attributes:
-        username (str): The username for the new user.
-        email (str): The email address for the new user.
+        username (str): The username for the new user. Must be 3-50 characters.
+        email (str): The email address for the new user. Must be up to 100 characters.
         age (int): The age of the user.
-        role (str): The role of the user in the system.
+        role (str): The role of the user in the system. Must be up to 20 characters.
     """
-    username: str
-    email: str
+    username: str = Field(min_length=3, max_length=50)
+    email: str = Field(max_length=100)
     age: int
-    role: str
+    role: str = Field(max_length=20)
 
 class UserSchema(BaseModel):
     """Schema for user data representation.
