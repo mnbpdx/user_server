@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 from services.user_service import UserService
 from schemas.user_schemas import UserSchema, UserResponseSchema, UserCreateSchema
+from schemas.error_schemas import ErrorResponseBuilder
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
@@ -46,7 +47,8 @@ def get_user(id):
     """
     user = UserService.get_user(id=id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        error_response = ErrorResponseBuilder.not_found("User", id)
+        return jsonify(error_response.model_dump()), 404
     
     userResponse = UserSchema.model_validate(user)
     return jsonify(userResponse.model_dump())
@@ -64,13 +66,12 @@ def delete_user(id):
     Status Codes:
         204: User deleted successfully.
         404: User not found.
+        500: Internal server error.
     """
-    success, error = UserService.delete_user(id=id)
+    success, error_response = UserService.delete_user(id=id)
     if not success:
-        if error == "User not found":
-            return jsonify({'error': 'User not found'}), 404
-        else:
-            return jsonify({'error': error}), 500
+        status_code = 404 if error_response.code == "RESOURCE_NOT_FOUND" else 500
+        return jsonify(error_response.model_dump()), status_code
     
     return '', 204
 
@@ -87,25 +88,58 @@ def create_user():
     Status Codes:
         201: User created successfully.
         400: Invalid request data or validation error.
+        409: User with same username or email already exists.
         500: Internal server error during user creation.
     """
     try:
-        validatedUserRequest = UserCreateSchema(**request.get_json())
+        # Check if request has JSON content
+        if not request.is_json:
+            error_response = ErrorResponseBuilder.invalid_json("Request must have JSON content type")
+            return jsonify(error_response.model_dump()), 400
+            
+        # Get JSON data - handle potential exceptions
+        try:
+            json_data = request.get_json()
+        except Exception:
+            error_response = ErrorResponseBuilder.invalid_json("Request body must be valid JSON")
+            return jsonify(error_response.model_dump()), 400
+            
+        if json_data is None:
+            error_response = ErrorResponseBuilder.invalid_json("Request body must be valid JSON")
+            return jsonify(error_response.model_dump()), 400
         
-        user, error = UserService.create_user(
+        # Validate request data
+        validatedUserRequest = UserCreateSchema(**json_data)
+        
+        # Create user
+        user, error_response = UserService.create_user(
             validatedUserRequest.username,
             validatedUserRequest.email,
             validatedUserRequest.age,
             validatedUserRequest.role
         )
         
-        if error:
-            return jsonify({'error': error}), 500
+        # Handle service errors
+        if error_response:
+            if error_response.code == "RESOURCE_ALREADY_EXISTS":
+                return jsonify(error_response.model_dump()), 409
+            elif error_response.code == "CONSTRAINT_VIOLATION":
+                return jsonify(error_response.model_dump()), 409
+            elif error_response.code == "DATABASE_ERROR":
+                return jsonify(error_response.model_dump()), 500
+            else:
+                return jsonify(error_response.model_dump()), 500
         
+        # Return created user
         userResponse = UserSchema.model_validate(user)
         return jsonify(userResponse.model_dump()), 201
         
     except ValidationError as e:
-        return jsonify({'error': 'Request Pydantic validation failed', 'details': e.errors()}), 400
+        error_response = ErrorResponseBuilder.pydantic_validation_error(e)
+        return jsonify(error_response.model_dump()), 400
+        
     except Exception as e:
-        return jsonify({'error': 'general error'}), 400
+        error_response = ErrorResponseBuilder.internal_server_error(
+            "An unexpected error occurred while processing the request"
+        )
+        return jsonify(error_response.model_dump()), 500
