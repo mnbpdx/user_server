@@ -106,7 +106,11 @@ class TestGetUserById:
         
         data = response.get_json()
         assert 'error' in data
-        assert data['error'] == 'User not found'
+        assert 'code' in data
+        assert 'message' in data
+        assert data['error'] == 'Resource Not Found'
+        assert data['code'] == 'RESOURCE_NOT_FOUND'
+        assert 'User not found with id: 999' in data['message']
 
 
 class TestDeleteUser:
@@ -127,7 +131,11 @@ class TestDeleteUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert data['error'] == 'User not found'
+        assert 'code' in data
+        assert 'message' in data
+        assert data['error'] == 'Resource Not Found'
+        assert data['code'] == 'RESOURCE_NOT_FOUND'
+        assert 'User not found with id: 999' in data['message']
     
     def test_delete_user_removes_from_database(self, client, create_user):
         """Test that deleted user is completely removed from database."""
@@ -148,7 +156,11 @@ class TestDeleteUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert data['error'] == 'User not found'
+        assert 'code' in data
+        assert 'message' in data
+        assert data['error'] == 'Resource Not Found'
+        assert data['code'] == 'RESOURCE_NOT_FOUND'
+        assert f'User not found with id: {user_id}' in data['message']
     
     def test_delete_user_not_in_all_users_list(self, client, create_user):
         """Test that deleted user is not included in get all users response."""
@@ -239,7 +251,13 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
+        assert 'details' in data
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert len(data['details']) == 2  # Missing age and role
     
     def test_create_user_invalid_data_types(self, client):
         """Test creating a user with invalid data types."""
@@ -258,7 +276,13 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
+        assert 'details' in data
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert len(data['details']) == 1  # Invalid age type
     
     def test_create_user_no_json_body(self, client):
         """Test creating a user without JSON body."""
@@ -269,6 +293,11 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
+        assert 'code' in data
+        assert 'message' in data
+        assert data['error'] == 'Invalid JSON'
+        assert data['code'] == 'INVALID_JSON'
+        assert 'Request body must be valid JSON' in data['message']
     
     def test_create_user_empty_json(self, client):
         """Test creating a user with empty JSON body."""
@@ -280,7 +309,13 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
+        assert 'details' in data
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert len(data['details']) == 4  # Missing username, email, age, role
     
     def test_create_user_username_empty(self, client):
         """Test creating a user with empty username."""
@@ -299,9 +334,13 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
         assert 'details' in data
-        assert any('at least 3 characters' in str(error) for error in data['details'])
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert any('username' in detail['field'] and 'at least 3 characters' in detail['message'] for detail in data['details'])
     
     def test_create_user_username_too_short(self, client):
         """Test creating a user with username shorter than 3 characters."""
@@ -320,9 +359,13 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
         assert 'details' in data
-        assert any('at least 3 characters' in str(error) for error in data['details'])
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert any('username' in detail['field'] and 'at least 3 characters' in detail['message'] for detail in data['details'])
     
     def test_create_user_username_minimum_length(self, client):
         """Test creating a user with username of minimum valid length (3 characters)."""
@@ -385,9 +428,13 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
         assert 'details' in data
-        assert any('at most 50 characters' in str(error) for error in data['details'])
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert any('username' in detail['field'] and 'at most 50 characters' in detail['message'] for detail in data['details'])
     
     def test_create_user_email_maximum_length(self, client):
         """Test creating a user with email of maximum valid length (100 characters)."""
@@ -428,9 +475,13 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
         assert 'details' in data
-        assert any('at most 100 characters' in str(error) for error in data['details'])
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert any('email' in detail['field'] and 'at most 100 characters' in detail['message'] for detail in data['details'])
     
     def test_create_user_role_maximum_length(self, client):
         """Test creating a user with role of maximum valid length (20 characters)."""
@@ -471,6 +522,10 @@ class TestCreateUser:
         
         data = response.get_json()
         assert 'error' in data
-        assert 'Request Pydantic validation failed' in data['error']
+        assert 'code' in data
+        assert 'message' in data
         assert 'details' in data
-        assert any('at most 20 characters' in str(error) for error in data['details'])
+        assert data['error'] == 'Validation Error'
+        assert data['code'] == 'VALIDATION_ERROR'
+        assert data['message'] == 'Request validation failed'
+        assert any('role' in detail['field'] and 'at most 20 characters' in detail['message'] for detail in data['details'])
