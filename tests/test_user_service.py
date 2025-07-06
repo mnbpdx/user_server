@@ -34,7 +34,7 @@ class TestUserServiceCreateUser:
     
     @patch('services.user_service.db')
     def test_create_user_username_already_exists(self, mock_db):
-        """Test user creation when username already exists through database constraint."""
+        """Test user creation when username already exists."""
         # Arrange
         mock_user = Mock()
         
@@ -52,13 +52,13 @@ class TestUserServiceCreateUser:
             # Assert
             assert user is None
             assert error is not None
-            assert error.code == ErrorCode.CONSTRAINT_VIOLATION
-            assert "Username" in error.message and "testuser" in error.message
+            assert error.code == ErrorCode.RESOURCE_ALREADY_EXISTS
+            assert "testuser" in error.message
             mock_db.session.rollback.assert_called_once()
     
     @patch('services.user_service.db')
     def test_create_user_email_already_exists(self, mock_db):
-        """Test user creation when email already exists through database constraint."""
+        """Test user creation when email already exists."""
         # Arrange
         mock_user = Mock()
         
@@ -76,7 +76,7 @@ class TestUserServiceCreateUser:
             # Assert
             assert user is None
             assert error is not None
-            assert error.code == ErrorCode.CONSTRAINT_VIOLATION
+            assert error.code == ErrorCode.RESOURCE_ALREADY_EXISTS
             assert "test@example.com" in error.message
             mock_db.session.rollback.assert_called_once()
     
@@ -101,7 +101,7 @@ class TestUserServiceCreateUser:
             # Assert
             assert user is None
             assert error is not None
-            assert error.code == ErrorCode.CONSTRAINT_VIOLATION
+            assert error.code == ErrorCode.RESOURCE_ALREADY_EXISTS
             assert "testuser" in error.message
             mock_db.session.rollback.assert_called_once()
     
@@ -126,8 +126,8 @@ class TestUserServiceCreateUser:
             # Assert
             assert user is None
             assert error is not None
-            assert error.code == ErrorCode.CONSTRAINT_VIOLATION
-            assert "Email" in error.message and "test@example.com" in error.message
+            assert error.code == ErrorCode.RESOURCE_ALREADY_EXISTS
+            assert "test@example.com" in error.message
             mock_db.session.rollback.assert_called_once()
     
     @patch('services.user_service.db')

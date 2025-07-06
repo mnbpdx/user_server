@@ -35,20 +35,12 @@ def handle_database_errors(operation_name: str):
                     username = bound_args.arguments.get('username') or (
                         bound_args.arguments.get('update_data', {}).get('username') if 'update_data' in bound_args.arguments else None
                     )
-                    message = f"Username '{username}' is already taken" if username else "Username is already taken"
-                    return None, ErrorResponseBuilder.constraint_violation(
-                        "unique_username", 
-                        message
-                    )
+                    return None, ErrorResponseBuilder.already_exists("User", "username", username) if username else ErrorResponseBuilder.already_exists("User", "username", "unknown")
                 elif "email" in error_msg.lower():
                     email = bound_args.arguments.get('email') or (
                         bound_args.arguments.get('update_data', {}).get('email') if 'update_data' in bound_args.arguments else None
                     )
-                    message = f"Email '{email}' is already registered" if email else "Email is already registered"
-                    return None, ErrorResponseBuilder.constraint_violation(
-                        "unique_email", 
-                        message
-                    )
+                    return None, ErrorResponseBuilder.already_exists("User", "email", email) if email else ErrorResponseBuilder.already_exists("User", "email", "unknown")
                 else:
                     return None, ErrorResponseBuilder.constraint_violation(
                         "unknown_constraint", 
