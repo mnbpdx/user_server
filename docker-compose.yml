@@ -9,3 +9,5 @@ services:
     command: python -m pytest
     environment:
       - FLASK_ENV=testing
+    profiles:
+      - test
