@@ -8,6 +8,7 @@ A simple Flask API server for managing users, with SQLAlchemy for database opera
 - `GET /api/users/role/{role}` - Get users by role
 - `GET /api/users/{id}` - Get user by ID
 - `POST /api/users` - Create a new user (ID is auto-generated)
+- `PATCH /api/users/{id}` - Update an existing user (partial updates supported)
 - `DELETE /api/users/{id}` - Delete a user by ID
 
 ## User Creation
