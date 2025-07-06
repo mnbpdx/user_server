@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch
-from config import Config, DevelopmentConfig, ProductionConfig, TestingConfig, config
+from config import Config, DevelopmentConfig, ProductionConfig, ConfigTesting, config
 
 
 class TestConfigBase:
@@ -249,46 +249,46 @@ class TestProductionConfig:
         del os.environ['DATABASE_URL']
 
 
-class TestTestingConfig:
-    """Test the TestingConfig class."""
+class TestConfigTesting:
+    """Test the ConfigTesting class."""
     
     def test_testing_config_inherits_from_config(self):
-        """Test that TestingConfig inherits from Config."""
-        assert issubclass(TestingConfig, Config)
+        """Test that ConfigTesting inherits from Config."""
+        assert issubclass(ConfigTesting, Config)
     
     def test_testing_config_testing_enabled(self):
-        """Test that TestingConfig has testing enabled."""
-        config_obj = TestingConfig()
+        """Test that ConfigTesting has testing enabled."""
+        config_obj = ConfigTesting()
         
         assert config_obj.TESTING is True
     
     def test_testing_config_database_in_memory(self):
-        """Test that TestingConfig uses in-memory database."""
-        config_obj = TestingConfig()
+        """Test that ConfigTesting uses in-memory database."""
+        config_obj = ConfigTesting()
         
         assert config_obj.SQLALCHEMY_DATABASE_URI == 'sqlite:///:memory:'
     
     def test_testing_config_csrf_disabled(self):
-        """Test that TestingConfig has CSRF disabled."""
-        config_obj = TestingConfig()
+        """Test that ConfigTesting has CSRF disabled."""
+        config_obj = ConfigTesting()
         
         assert config_obj.WTF_CSRF_ENABLED is False
     
     def test_testing_config_request_logging_disabled(self):
-        """Test that TestingConfig has request logging disabled."""
-        config_obj = TestingConfig()
+        """Test that ConfigTesting has request logging disabled."""
+        config_obj = ConfigTesting()
         
         assert config_obj.REQUEST_LOGGING_ENABLED is False
     
     def test_testing_config_log_level_warning(self):
-        """Test that TestingConfig has WARNING log level."""
-        config_obj = TestingConfig()
+        """Test that ConfigTesting has WARNING log level."""
+        config_obj = ConfigTesting()
         
         assert config_obj.LOG_LEVEL == 'WARNING'
     
     def test_testing_config_inherits_base_values(self):
-        """Test that TestingConfig inherits base Config values."""
-        config_obj = TestingConfig()
+        """Test that ConfigTesting inherits base Config values."""
+        config_obj = ConfigTesting()
         
         # Should inherit from base Config
         assert config_obj.SECRET_KEY == 'dev-secret-key'
@@ -296,10 +296,10 @@ class TestTestingConfig:
         assert config_obj.LOG_DIR == 'logs'
     
     def test_testing_config_overrides_environment_database(self):
-        """Test that TestingConfig overrides environment DATABASE_URL."""
+        """Test that ConfigTesting overrides environment DATABASE_URL."""
         os.environ['DATABASE_URL'] = 'postgresql://user:pass@localhost/testdb'
         
-        config_obj = TestingConfig()
+        config_obj = ConfigTesting()
         
         # Should use in-memory database regardless of environment
         assert config_obj.SQLALCHEMY_DATABASE_URI == 'sqlite:///:memory:'
@@ -308,10 +308,10 @@ class TestTestingConfig:
         del os.environ['DATABASE_URL']
     
     def test_testing_config_overrides_environment_request_logging(self):
-        """Test that TestingConfig overrides environment REQUEST_LOGGING_ENABLED."""
+        """Test that ConfigTesting overrides environment REQUEST_LOGGING_ENABLED."""
         os.environ['REQUEST_LOGGING_ENABLED'] = 'true'
         
-        config_obj = TestingConfig()
+        config_obj = ConfigTesting()
         
         # Should disable request logging regardless of environment
         assert config_obj.REQUEST_LOGGING_ENABLED is False
@@ -335,7 +335,7 @@ class TestConfigDictionary:
         """Test that config dictionary maps to correct classes."""
         assert config['development'] == DevelopmentConfig
         assert config['production'] == ProductionConfig
-        assert config['testing'] == TestingConfig
+        assert config['testing'] == ConfigTesting
         assert config['default'] == DevelopmentConfig
     
     def test_config_dictionary_instantiation(self):

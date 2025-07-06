@@ -55,7 +55,7 @@ class ProductionConfig(Config):
         super().__init__()
         self.LOG_LEVEL = 'INFO'
 
-class TestingConfig(Config):
+class ConfigTesting(Config):
     """Testing environment configuration.
     
     Inherits from Config and configures settings for testing.
@@ -73,6 +73,6 @@ class TestingConfig(Config):
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'testing': TestingConfig,
+    'testing': ConfigTesting,
     'default': DevelopmentConfig
 }
