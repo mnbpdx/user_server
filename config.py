@@ -15,17 +15,21 @@ class Config:
         REQUEST_LOGGING_ENABLED: Enable/disable request logging.
         LOG_RETENTION_DAYS: Number of days to retain log files.
     """
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Logging configuration
-    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_DIR = os.environ.get('LOG_DIR', 'logs')
-    REQUEST_LOGGING_ENABLED = os.environ.get('REQUEST_LOGGING_ENABLED', 'true').lower() == 'true'
-    LOG_RETENTION_DAYS = int(os.environ.get('LOG_RETENTION_DAYS', '30'))
-    LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))  # 10MB
-    LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
+    def __init__(self):
+        """Initialize configuration with environment variables."""
+        self.SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
+        self.SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
+        
+        # Logging configuration
+        self.LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+        self.LOG_DIR = os.environ.get('LOG_DIR') or 'logs'
+        request_logging_enabled = os.environ.get('REQUEST_LOGGING_ENABLED', 'true').lower()
+        self.REQUEST_LOGGING_ENABLED = request_logging_enabled in ('true', '1', 'yes', 'on')
+        self.LOG_RETENTION_DAYS = int(os.environ.get('LOG_RETENTION_DAYS', '30'))
+        self.LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))  # 10MB
+        self.LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
 
 class DevelopmentConfig(Config):
     """Development environment configuration.
@@ -33,7 +37,11 @@ class DevelopmentConfig(Config):
     Inherits from Config and enables debug mode for development.
     """
     DEBUG = True
-    LOG_LEVEL = 'DEBUG'
+    
+    def __init__(self):
+        """Initialize development configuration."""
+        super().__init__()
+        self.LOG_LEVEL = 'DEBUG'
 
 class ProductionConfig(Config):
     """Production environment configuration.
@@ -41,7 +49,11 @@ class ProductionConfig(Config):
     Inherits from Config and disables debug mode for production deployment.
     """
     DEBUG = False
-    LOG_LEVEL = 'INFO'
+    
+    def __init__(self):
+        """Initialize production configuration."""
+        super().__init__()
+        self.LOG_LEVEL = 'INFO'
 
 class TestingConfig(Config):
     """Testing environment configuration.
@@ -49,10 +61,14 @@ class TestingConfig(Config):
     Inherits from Config and configures settings for testing.
     """
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
-    REQUEST_LOGGING_ENABLED = False  # Disable request logging in tests
-    LOG_LEVEL = 'WARNING'
+    
+    def __init__(self):
+        """Initialize testing configuration."""
+        super().__init__()
+        self.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+        self.REQUEST_LOGGING_ENABLED = False  # Disable request logging in tests
+        self.LOG_LEVEL = 'WARNING'
 
 config = {
     'development': DevelopmentConfig,

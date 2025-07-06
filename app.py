@@ -6,8 +6,6 @@ from config import config
 from logging_config import setup_logging, get_logger
 from middleware import init_request_logging
 
-# Initialize logging
-setup_logging()
 logger = get_logger(__name__)
 
 def config_setup(app):
@@ -17,7 +15,7 @@ def config_setup(app):
         app: The Flask application instance to configure.
     """
     config_name = os.environ.get('FLASK_ENV', 'default')
-    app.config.from_object(config[config_name])
+    app.config.from_object(config[config_name]())
     
     logger.info("Application configured", 
                 environment=config_name,
@@ -52,6 +50,7 @@ def setup_logging_middleware(app):
         logger.info("Request logging middleware disabled")
 
 if __name__ == '__main__':
+    setup_logging()  # Move this here
     logger.info("Starting Flask application")
     
     app = Flask(__name__)

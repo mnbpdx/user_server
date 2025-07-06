@@ -21,10 +21,19 @@ def setup_logging():
         ]
     )
     
+    # Set root logger level explicitly
+    logging.getLogger().setLevel(logging.INFO)
+    
     # Add file handler with rotation if log directory exists or create it
     log_dir = os.environ.get('LOG_DIR', 'logs')
     if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+        try:
+            os.makedirs(log_dir)
+        except PermissionError:
+            # If we can't create the directory, fall back to /tmp or current directory
+            log_dir = os.environ.get('TMPDIR', '/tmp')
+            if not os.path.exists(log_dir):
+                log_dir = '.'
     
     # Add rotating file handler
     file_handler = logging.handlers.RotatingFileHandler(

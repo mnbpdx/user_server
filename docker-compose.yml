@@ -6,6 +6,6 @@ services:
   
   test:
     build: .
-    command: python -m pytest tests/ -v
+    command: python -m pytest
     environment:
       - FLASK_ENV=testing

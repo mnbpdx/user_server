@@ -9,7 +9,7 @@ from config import config
 def app():
     """Create and configure a test Flask application."""
     app = Flask(__name__)
-    app.config.from_object(config['testing'])
+    app.config.from_object(config['testing']())
     
     # Initialize database
     db.init_app(app)
