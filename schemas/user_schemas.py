@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional
 
 class UserCreateSchema(BaseModel):
     """Schema for creating a new user.
@@ -16,6 +17,23 @@ class UserCreateSchema(BaseModel):
     email: str = Field(max_length=100)
     age: int
     role: str = Field(max_length=20)
+
+class UserUpdateSchema(BaseModel):
+    """Schema for updating an existing user.
+    
+    This schema validates the input data when updating a user.
+    All fields are optional to support partial updates.
+    
+    Attributes:
+        username (Optional[str]): The username for the user. Must be 3-50 characters if provided.
+        email (Optional[str]): The email address for the user. Must be up to 100 characters if provided.
+        age (Optional[int]): The age of the user if provided.
+        role (Optional[str]): The role of the user in the system. Must be up to 20 characters if provided.
+    """
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    email: Optional[str] = Field(None, max_length=100)
+    age: Optional[int] = None
+    role: Optional[str] = Field(None, max_length=20)
 
 class UserSchema(BaseModel):
     """Schema for user data representation.
