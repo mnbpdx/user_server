@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 from services.user_service import UserService
-from schemas.user_schemas import UserSchema, UserResponseSchema, UserCreateSchema
+from schemas.user_schemas import UserSchema, UserResponseSchema, UserCreateSchema, UserUpdateSchema
 from schemas.error_schemas import ErrorResponseBuilder
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
@@ -133,6 +133,84 @@ def create_user():
         # Return created user
         userResponse = UserSchema.model_validate(user)
         return jsonify(userResponse.model_dump()), 201
+        
+    except ValidationError as e:
+        error_response = ErrorResponseBuilder.pydantic_validation_error(e)
+        return jsonify(error_response.model_dump()), 400
+        
+    except Exception as e:
+        error_response = ErrorResponseBuilder.internal_server_error(
+            "An unexpected error occurred while processing the request"
+        )
+        return jsonify(error_response.model_dump()), 500
+
+@users_bp.route('/<int:id>', methods=['PATCH'])
+def update_user(id):
+    """Update an existing user.
+    
+    Expects JSON body with optional fields: username, email, age, and/or role.
+    Only provided fields will be updated (partial updates supported).
+    
+    Args:
+        id (int): The ID of the user to update.
+        
+    Returns:
+        Response: JSON response containing the updated user data or error message.
+        
+    Status Codes:
+        200: User updated successfully.
+        400: Invalid request data or validation error.
+        404: User not found.
+        409: User with same username or email already exists.
+        500: Internal server error during user update.
+    """
+    try:
+        # Check if request has JSON content
+        if not request.is_json:
+            error_response = ErrorResponseBuilder.invalid_json("Request must have JSON content type")
+            return jsonify(error_response.model_dump()), 400
+            
+        # Get JSON data - handle potential exceptions
+        try:
+            json_data = request.get_json()
+        except Exception:
+            error_response = ErrorResponseBuilder.invalid_json("Request body must be valid JSON")
+            return jsonify(error_response.model_dump()), 400
+            
+        if json_data is None:
+            error_response = ErrorResponseBuilder.invalid_json("Request body must be valid JSON")
+            return jsonify(error_response.model_dump()), 400
+        
+        # Validate request data
+        validatedUserRequest = UserUpdateSchema(**json_data)
+        
+        # Filter out None values to only update provided fields
+        update_data = {k: v for k, v in validatedUserRequest.model_dump().items() if v is not None}
+        
+        # If no fields to update, return validation error
+        if not update_data:
+            error_response = ErrorResponseBuilder.invalid_json("At least one field must be provided for update")
+            return jsonify(error_response.model_dump()), 400
+        
+        # Update user
+        user, error_response = UserService.update_user(id, update_data)
+        
+        # Handle service errors
+        if error_response:
+            if error_response.code == "RESOURCE_NOT_FOUND":
+                return jsonify(error_response.model_dump()), 404
+            elif error_response.code == "RESOURCE_ALREADY_EXISTS":
+                return jsonify(error_response.model_dump()), 409
+            elif error_response.code == "CONSTRAINT_VIOLATION":
+                return jsonify(error_response.model_dump()), 409
+            elif error_response.code == "DATABASE_ERROR":
+                return jsonify(error_response.model_dump()), 500
+            else:
+                return jsonify(error_response.model_dump()), 500
+        
+        # Return updated user
+        userResponse = UserSchema.model_validate(user)
+        return jsonify(userResponse.model_dump()), 200
         
     except ValidationError as e:
         error_response = ErrorResponseBuilder.pydantic_validation_error(e)

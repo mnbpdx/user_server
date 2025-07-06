@@ -2,7 +2,7 @@ from models import db
 from models.user import User
 from sqlalchemy.exc import IntegrityError, DatabaseError
 from schemas.error_schemas import ErrorResponse, ErrorResponseBuilder
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any
 
 class UserService:
     """Service class for user-related operations.
@@ -79,6 +79,83 @@ class UserService:
             db.session.rollback()
             return None, ErrorResponseBuilder.internal_server_error(
                 "An unexpected error occurred while creating the user"
+            )
+    
+    @staticmethod
+    def update_user(
+        id: int,
+        update_data: Dict[str, Any]
+    ) -> Tuple[Optional[User], Optional[ErrorResponse]]:
+        """Update an existing user in the database.
+        
+        Args:
+            id (int): The ID of the user to update.
+            update_data (Dict[str, Any]): Dictionary of fields to update.
+            
+        Returns:
+            tuple: A tuple containing (User, None) on success or (None, ErrorResponse) on failure.
+        """
+        try:
+            # Get the user to update
+            user = db.session.get(User, id)
+            if not user:
+                return None, ErrorResponseBuilder.not_found("User", id)
+            
+            # Check for unique constraint violations before updating
+            if 'username' in update_data and update_data['username'] != user.username:
+                existing_user = db.session.query(User).filter(
+                    User.username == update_data['username'],
+                    User.id != id
+                ).first()
+                if existing_user:
+                    return None, ErrorResponseBuilder.already_exists("User", "username", update_data['username'])
+            
+            if 'email' in update_data and update_data['email'] != user.email:
+                existing_user = db.session.query(User).filter(
+                    User.email == update_data['email'],
+                    User.id != id
+                ).first()
+                if existing_user:
+                    return None, ErrorResponseBuilder.already_exists("User", "email", update_data['email'])
+            
+            # Update the user's fields
+            for field, value in update_data.items():
+                if hasattr(user, field):
+                    setattr(user, field, value)
+            
+            db.session.commit()
+            return user, None
+            
+        except IntegrityError as e:
+            db.session.rollback()
+            # Handle specific database constraints
+            error_msg = str(e.orig)
+            if "username" in error_msg.lower():
+                return None, ErrorResponseBuilder.constraint_violation(
+                    "unique_username", 
+                    f"Username '{update_data.get('username', 'unknown')}' is already taken"
+                )
+            elif "email" in error_msg.lower():
+                return None, ErrorResponseBuilder.constraint_violation(
+                    "unique_email", 
+                    f"Email '{update_data.get('email', 'unknown')}' is already registered"
+                )
+            else:
+                return None, ErrorResponseBuilder.constraint_violation(
+                    "unknown_constraint", 
+                    "A database constraint was violated"
+                )
+                
+        except DatabaseError as e:
+            db.session.rollback()
+            return None, ErrorResponseBuilder.database_error(
+                "Failed to update user due to database error"
+            )
+            
+        except Exception as e:
+            db.session.rollback()
+            return None, ErrorResponseBuilder.internal_server_error(
+                "An unexpected error occurred while updating the user"
             )
         
     @staticmethod

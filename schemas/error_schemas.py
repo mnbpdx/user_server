@@ -126,6 +126,7 @@ class ErrorResponseBuilder:
     def pydantic_validation_error(validation_error) -> ErrorResponse:
         """Convert Pydantic validation error to standardized error response."""
         field_errors = []
+        error_messages = []
         
         for error in validation_error.errors():
             field_path = '.'.join(str(loc) for loc in error['loc'])
@@ -157,10 +158,19 @@ class ErrorResponseBuilder:
                 code=code,
                 value=input_value
             ))
+            
+            # Add formatted error message for main message field
+            if field_path:
+                error_messages.append(f"{field_path}: {error_msg}")
+            else:
+                error_messages.append(error_msg)
+        
+        # Combine all error messages into main message
+        main_message = "; ".join(error_messages) if error_messages else "Request validation failed"
         
         return ErrorResponse(
             error="Validation Error",
             code=ErrorCode.VALIDATION_ERROR,
-            message="Request validation failed",
+            message=main_message,
             details=field_errors
         ) 

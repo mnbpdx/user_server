@@ -487,7 +487,9 @@ class TestErrorResponseBuilder:
             
             assert error_response.error == "Validation Error"
             assert error_response.code == ErrorCode.VALIDATION_ERROR
-            assert error_response.message == "Request validation failed"
+            # Check that the message contains the actual error details
+            assert "String should have at least 3 characters" in error_response.message
+            assert "Input should be a valid integer" in error_response.message
             assert len(error_response.details) >= 2  # At least username and age errors
             
             # Check that field errors are properly mapped
