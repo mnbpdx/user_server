@@ -3,6 +3,7 @@ from pydantic import ValidationError
 from services.user_service import UserService
 from schemas.user_schemas import UserSchema, UserResponseSchema, UserCreateSchema, UserUpdateSchema
 from schemas.error_schemas import ErrorResponseBuilder, ErrorCode
+from rate_limiting import limiter
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
@@ -97,6 +98,7 @@ def get_user(id):
     return jsonify(userResponse.model_dump())
 
 @users_bp.route('/<int:id>', methods=['DELETE'])
+@limiter.limit("3 per minute")
 def delete_user(id):
     """Delete a specific user by ID.
     
@@ -119,6 +121,7 @@ def delete_user(id):
     return '', 204
 
 @users_bp.route('', methods=['POST'])
+@limiter.limit("2 per minute")
 def create_user():
     """Create a new user.
     
@@ -162,6 +165,7 @@ def create_user():
         return jsonify(error_response.model_dump()), 500
 
 @users_bp.route('/<int:id>', methods=['PATCH'])
+@limiter.limit("5 per minute")
 def update_user(id):
     """Update an existing user.
     

@@ -3,11 +3,38 @@ services:
     build: .
     ports:
       - "5003:5003"
+    depends_on:
+      - redis
+    environment:
+      - FLASK_ENV=development
+    volumes:
+      - .:/app
   
   test:
     build: .
-    command: python -m pytest
+    command: python -m pytest tests/ -v
+    depends_on:
+      - redis
     environment:
       - FLASK_ENV=testing
     profiles:
       - test
+    volumes:
+      - .:/app
+  
+  migrate:
+    build: .
+    command: flask db upgrade
+    depends_on:
+      - redis
+    environment:
+      - FLASK_ENV=development
+    profiles:
+      - migration
+    volumes:
+      - .:/app
+  
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
