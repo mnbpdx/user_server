@@ -20,12 +20,13 @@ class User(db.Model):
     email: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=True)
     
     def to_dict(self):
         """Convert the User instance to a dictionary.
         
         Returns:
-            dict: A dictionary representation of the user with all attributes.
+            dict: A dictionary representation of the user with all attributes except password_hash.
         """
         return {
             'id': self.id,

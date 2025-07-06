@@ -1,12 +1,16 @@
 from flask import Flask
+from flask_migrate import Migrate
 from models import db
 from routes import register_blueprints
+from rate_limiting import limiter
+from api_docs import api
 import os
 from config import config
 from logging_config import setup_logging, get_logger
 from middleware import init_request_logging
 
 logger = get_logger(__name__)
+migrate = Migrate()
 
 def config_setup(app):
     """Configure the Flask application with environment-specific settings.
@@ -24,7 +28,7 @@ def config_setup(app):
 
 
 def setup_database(app):
-    """Initialize the database and create tables if they don't exist.
+    """Initialize the database and Flask-Migrate.
     
     Args:
         app: The Flask application instance to configure database for.
@@ -32,10 +36,30 @@ def setup_database(app):
     # initialize database
     db.init_app(app)
 
-    # create empty tables if they don't exist yet
-    with app.app_context():
-        db.create_all()
-        logger.info("Database initialized and tables created")
+    # initialize Flask-Migrate
+    migrate.init_app(app, db)
+    
+    logger.info("Database and Flask-Migrate initialized")
+
+def setup_rate_limiting(app):
+    """Initialize Flask-Limiter for rate limiting.
+    
+    Args:
+        app: The Flask application instance to configure rate limiting for.
+    """
+    # Skip rate limiting setup if disabled
+    if not app.config.get('RATELIMIT_ENABLED', True):
+        logger.info("Rate limiting disabled")
+        return
+    
+    # configure rate limiting storage
+    app.config['RATELIMIT_STORAGE_URI'] = app.config.get('RATELIMIT_STORAGE_URI', 'redis://redis:6379')
+    app.config['RATELIMIT_HEADERS_ENABLED'] = app.config.get('RATELIMIT_HEADERS_ENABLED', True)
+    
+    # initialize Flask-Limiter
+    limiter.init_app(app)
+    
+    logger.info("Flask-Limiter initialized with storage: %s", app.config['RATELIMIT_STORAGE_URI'])
 
 def setup_logging_middleware(app):
     """Setup request logging middleware if enabled.
@@ -49,15 +73,33 @@ def setup_logging_middleware(app):
     else:
         logger.info("Request logging middleware disabled")
 
-if __name__ == '__main__':
-    setup_logging()  # Move this here
-    logger.info("Starting Flask application")
+def setup_api_documentation(app):
+    """Initialize Flask-RESTX API documentation.
+    
+    Args:
+        app: The Flask application instance to configure API documentation for.
+    """
+    # Initialize Flask-RESTX API
+    api.init_app(app)
+    
+    logger.info("Flask-RESTX API documentation initialized at /docs")
+
+def create_app():
+    """Create and configure the Flask application.
+    
+    Returns:
+        Flask: The configured Flask application instance.
+    """
+    setup_logging()
+    logger.info("Creating Flask application")
     
     app = Flask(__name__)
 
     config_setup(app)
     setup_database(app)
+    setup_rate_limiting(app)
     setup_logging_middleware(app)
+    setup_api_documentation(app)
     register_blueprints(app)
 
     @app.route('/health')
@@ -70,7 +112,14 @@ if __name__ == '__main__':
         logger.debug("Health check requested")
         return 'healthy, thank you!'
 
-    logger.info("Flask application ready to start", 
+    logger.info("Flask application created and configured")
+    return app
+
+# Create the app for Flask CLI
+app = create_app()
+
+if __name__ == '__main__':
+    logger.info("Starting Flask application", 
                 host='0.0.0.0', 
                 port=5003, 
                 debug=app.config.get('DEBUG', False))

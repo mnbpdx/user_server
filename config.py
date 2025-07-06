@@ -30,6 +30,10 @@ class Config:
         self.LOG_RETENTION_DAYS = int(os.environ.get('LOG_RETENTION_DAYS', '30'))
         self.LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '10485760'))  # 10MB
         self.LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
+        
+        # Rate limiting configuration
+        self.RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'redis://redis:6379')
+        self.RATELIMIT_HEADERS_ENABLED = True
 
 class DevelopmentConfig(Config):
     """Development environment configuration.
@@ -69,6 +73,8 @@ class ConfigTesting(Config):
         self.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
         self.REQUEST_LOGGING_ENABLED = False  # Disable request logging in tests
         self.LOG_LEVEL = 'WARNING'
+        # Disable rate limiting in tests
+        self.RATELIMIT_ENABLED = False
 
 config = {
     'development': DevelopmentConfig,
