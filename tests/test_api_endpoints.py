@@ -711,9 +711,9 @@ class TestUpdateUser:
         assert 'error' in data
         assert 'code' in data
         assert 'message' in data
-        assert data['error'] == 'Resource Already Exists'
-        assert data['code'] == 'RESOURCE_ALREADY_EXISTS'
-        assert 'User already exists with username: user1' in data['message']
+        assert data['error'] == 'Constraint Violation'
+        assert data['code'] == 'CONSTRAINT_VIOLATION'
+        assert 'Username' in data['message'] and 'user1' in data['message']
     
     def test_update_user_email_already_exists(self, client, create_user):
         """Test updating a user with an already existing email returns 409 Conflict."""
@@ -731,9 +731,9 @@ class TestUpdateUser:
         assert 'error' in data
         assert 'code' in data
         assert 'message' in data
-        assert data['error'] == 'Resource Already Exists'
-        assert data['code'] == 'RESOURCE_ALREADY_EXISTS'
-        assert 'User already exists with email: user1@example.com' in data['message']
+        assert data['error'] == 'Constraint Violation'
+        assert data['code'] == 'CONSTRAINT_VIOLATION'
+        assert 'Email' in data['message'] and 'user1@example.com' in data['message']
     
     def test_update_user_same_username_no_conflict(self, client, create_user):
         """Test updating a user with their own username succeeds."""

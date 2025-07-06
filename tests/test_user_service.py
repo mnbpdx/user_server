@@ -34,39 +34,51 @@ class TestUserServiceCreateUser:
     
     @patch('services.user_service.db')
     def test_create_user_username_already_exists(self, mock_db):
-        """Test user creation when username already exists."""
+        """Test user creation when username already exists through database constraint."""
         # Arrange
-        existing_user = Mock()
-        mock_db.session.query.return_value.filter.return_value.first.side_effect = [existing_user, None]
+        mock_user = Mock()
         
-        # Act
-        user, error = UserService.create_user("testuser", "test@example.com", 25, "admin")
+        # Mock IntegrityError with username in message
+        integrity_error = IntegrityError("statement", "params", "orig")
+        integrity_error.orig = Mock()
+        integrity_error.orig.__str__ = Mock(return_value="UNIQUE constraint failed: users.username")
         
-        # Assert
-        assert user is None
-        assert error is not None
-        assert error.code == ErrorCode.RESOURCE_ALREADY_EXISTS
-        assert "testuser" in error.message
-        mock_db.session.add.assert_not_called()
-        mock_db.session.commit.assert_not_called()
+        mock_db.session.commit.side_effect = integrity_error
+        
+        with patch('services.user_service.User', return_value=mock_user):
+            # Act
+            user, error = UserService.create_user("testuser", "test@example.com", 25, "admin")
+            
+            # Assert
+            assert user is None
+            assert error is not None
+            assert error.code == ErrorCode.CONSTRAINT_VIOLATION
+            assert "Username" in error.message and "testuser" in error.message
+            mock_db.session.rollback.assert_called_once()
     
     @patch('services.user_service.db')
     def test_create_user_email_already_exists(self, mock_db):
-        """Test user creation when email already exists."""
+        """Test user creation when email already exists through database constraint."""
         # Arrange
-        existing_user = Mock()
-        mock_db.session.query.return_value.filter.return_value.first.side_effect = [None, existing_user]
+        mock_user = Mock()
         
-        # Act
-        user, error = UserService.create_user("testuser", "test@example.com", 25, "admin")
+        # Mock IntegrityError with email in message
+        integrity_error = IntegrityError("statement", "params", "orig")
+        integrity_error.orig = Mock()
+        integrity_error.orig.__str__ = Mock(return_value="UNIQUE constraint failed: users.email")
         
-        # Assert
-        assert user is None
-        assert error is not None
-        assert error.code == ErrorCode.RESOURCE_ALREADY_EXISTS
-        assert "test@example.com" in error.message
-        mock_db.session.add.assert_not_called()
-        mock_db.session.commit.assert_not_called()
+        mock_db.session.commit.side_effect = integrity_error
+        
+        with patch('services.user_service.User', return_value=mock_user):
+            # Act
+            user, error = UserService.create_user("testuser", "test@example.com", 25, "admin")
+            
+            # Assert
+            assert user is None
+            assert error is not None
+            assert error.code == ErrorCode.CONSTRAINT_VIOLATION
+            assert "test@example.com" in error.message
+            mock_db.session.rollback.assert_called_once()
     
     @patch('services.user_service.db')
     def test_create_user_integrity_error_username(self, mock_db):
@@ -115,7 +127,7 @@ class TestUserServiceCreateUser:
             assert user is None
             assert error is not None
             assert error.code == ErrorCode.CONSTRAINT_VIOLATION
-            assert "test@example.com" in error.message
+            assert "Email" in error.message and "test@example.com" in error.message
             mock_db.session.rollback.assert_called_once()
     
     @patch('services.user_service.db')

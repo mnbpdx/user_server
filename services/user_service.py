@@ -3,6 +3,70 @@ from models.user import User
 from sqlalchemy.exc import IntegrityError, DatabaseError
 from schemas.error_schemas import ErrorResponse, ErrorResponseBuilder
 from typing import Tuple, Optional, Dict, Any
+from functools import wraps
+import inspect
+
+
+def handle_database_errors(operation_name: str):
+    """Decorator to handle common database errors in service methods.
+    
+    Args:
+        operation_name (str): Name of the operation for error messages.
+        
+    Returns:
+        Decorator function that handles database errors.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except IntegrityError as e:
+                db.session.rollback()
+                # Handle specific database constraints
+                error_msg = str(e.orig)
+                
+                # Get function signature to extract username/email from args
+                sig = inspect.signature(func)
+                bound_args = sig.bind(*args, **kwargs)
+                bound_args.apply_defaults()
+                
+                if "username" in error_msg.lower():
+                    username = bound_args.arguments.get('username') or (
+                        bound_args.arguments.get('update_data', {}).get('username') if 'update_data' in bound_args.arguments else None
+                    )
+                    message = f"Username '{username}' is already taken" if username else "Username is already taken"
+                    return None, ErrorResponseBuilder.constraint_violation(
+                        "unique_username", 
+                        message
+                    )
+                elif "email" in error_msg.lower():
+                    email = bound_args.arguments.get('email') or (
+                        bound_args.arguments.get('update_data', {}).get('email') if 'update_data' in bound_args.arguments else None
+                    )
+                    message = f"Email '{email}' is already registered" if email else "Email is already registered"
+                    return None, ErrorResponseBuilder.constraint_violation(
+                        "unique_email", 
+                        message
+                    )
+                else:
+                    return None, ErrorResponseBuilder.constraint_violation(
+                        "unknown_constraint", 
+                        "A database constraint was violated"
+                    )
+            except DatabaseError as e:
+                db.session.rollback()
+                return None, ErrorResponseBuilder.database_error(
+                    f"Failed to {operation_name} due to database error"
+                )
+            except Exception as e:
+                db.session.rollback()
+                return None, ErrorResponseBuilder.internal_server_error(
+                    f"An unexpected error occurred while {operation_name}"
+                )
+        return wrapper
+    return decorator
+
 
 class UserService:
     """Service class for user-related operations.
@@ -10,7 +74,9 @@ class UserService:
     This class provides static methods for CRUD operations on User entities,
     handling database interactions and structured error management.
     """
+    
     @staticmethod
+    @handle_database_errors("creating user")
     def create_user(
         username: str,
         email: str,
@@ -28,60 +94,18 @@ class UserService:
         Returns:
             tuple: A tuple containing (User, None) on success or (None, ErrorResponse) on failure.
         """
-        try:
-            # Check if user with same username already exists
-            existing_user = db.session.query(User).filter(User.username == username).first()
-            if existing_user:
-                return None, ErrorResponseBuilder.already_exists("User", "username", username)
-            
-            # Check if user with same email already exists
-            existing_user = db.session.query(User).filter(User.email == email).first()
-            if existing_user:
-                return None, ErrorResponseBuilder.already_exists("User", "email", email)
-            
-            user = User(
-                username=username,
-                email=email,
-                age=age,
-                role=role,
-            )
-            db.session.add(user)
-            db.session.commit()
-            return user, None
-            
-        except IntegrityError as e:
-            db.session.rollback()
-            # Handle specific database constraints
-            error_msg = str(e.orig)
-            if "username" in error_msg.lower():
-                return None, ErrorResponseBuilder.constraint_violation(
-                    "unique_username", 
-                    f"Username '{username}' is already taken"
-                )
-            elif "email" in error_msg.lower():
-                return None, ErrorResponseBuilder.constraint_violation(
-                    "unique_email", 
-                    f"Email '{email}' is already registered"
-                )
-            else:
-                return None, ErrorResponseBuilder.constraint_violation(
-                    "unknown_constraint", 
-                    "A database constraint was violated"
-                )
-                
-        except DatabaseError as e:
-            db.session.rollback()
-            return None, ErrorResponseBuilder.database_error(
-                "Failed to create user due to database error"
-            )
-            
-        except Exception as e:
-            db.session.rollback()
-            return None, ErrorResponseBuilder.internal_server_error(
-                "An unexpected error occurred while creating the user"
-            )
+        user = User(
+            username=username,
+            email=email,
+            age=age,
+            role=role,
+        )
+        db.session.add(user)
+        db.session.commit()
+        return user, None
     
     @staticmethod
+    @handle_database_errors("updating user")
     def update_user(
         id: int,
         update_data: Dict[str, Any]
@@ -95,68 +119,18 @@ class UserService:
         Returns:
             tuple: A tuple containing (User, None) on success or (None, ErrorResponse) on failure.
         """
-        try:
-            # Get the user to update
-            user = db.session.get(User, id)
-            if not user:
-                return None, ErrorResponseBuilder.not_found("User", id)
-            
-            # Check for unique constraint violations before updating
-            if 'username' in update_data and update_data['username'] != user.username:
-                existing_user = db.session.query(User).filter(
-                    User.username == update_data['username'],
-                    User.id != id
-                ).first()
-                if existing_user:
-                    return None, ErrorResponseBuilder.already_exists("User", "username", update_data['username'])
-            
-            if 'email' in update_data and update_data['email'] != user.email:
-                existing_user = db.session.query(User).filter(
-                    User.email == update_data['email'],
-                    User.id != id
-                ).first()
-                if existing_user:
-                    return None, ErrorResponseBuilder.already_exists("User", "email", update_data['email'])
-            
-            # Update the user's fields
-            for field, value in update_data.items():
-                if hasattr(user, field):
-                    setattr(user, field, value)
-            
-            db.session.commit()
-            return user, None
-            
-        except IntegrityError as e:
-            db.session.rollback()
-            # Handle specific database constraints
-            error_msg = str(e.orig)
-            if "username" in error_msg.lower():
-                return None, ErrorResponseBuilder.constraint_violation(
-                    "unique_username", 
-                    f"Username '{update_data.get('username', 'unknown')}' is already taken"
-                )
-            elif "email" in error_msg.lower():
-                return None, ErrorResponseBuilder.constraint_violation(
-                    "unique_email", 
-                    f"Email '{update_data.get('email', 'unknown')}' is already registered"
-                )
-            else:
-                return None, ErrorResponseBuilder.constraint_violation(
-                    "unknown_constraint", 
-                    "A database constraint was violated"
-                )
-                
-        except DatabaseError as e:
-            db.session.rollback()
-            return None, ErrorResponseBuilder.database_error(
-                "Failed to update user due to database error"
-            )
-            
-        except Exception as e:
-            db.session.rollback()
-            return None, ErrorResponseBuilder.internal_server_error(
-                "An unexpected error occurred while updating the user"
-            )
+        # Get the user to update
+        user = db.session.get(User, id)
+        if not user:
+            return None, ErrorResponseBuilder.not_found("User", id)
+        
+        # Update the user's fields
+        for field, value in update_data.items():
+            if hasattr(user, field):
+                setattr(user, field, value)
+        
+        db.session.commit()
+        return user, None
         
     @staticmethod
     def get_user(id: int) -> Optional[User]:
